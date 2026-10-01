@@ -25,11 +25,19 @@ rm -f android/app/src/main/java/com/bath/bath_tv/MainActivity.java
 cp -r android_overrides/app android/
 
 # تصغير حجم APK: ضغط المكتبات الأصلية داخل الحزمة + R8 الكامل
-GRADLE_FILE="$(ls android/app/build.gradle.kts android/app/build.gradle 2>/dev/null | head -n1)"
-if [ -n "$GRADLE_FILE" ] && ! grep -q useLegacyPackaging "$GRADLE_FILE"; then
-  sed -i '0,/^android {/s//android {\n    packaging { jniLibs { useLegacyPackaging = true } }/' "$GRADLE_FILE"
-fi
-echo "android.enableR8.fullMode=true" >> android/gradle.properties
+python3 -c "
+import os
+for path in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            c = f.read()
+        if 'useLegacyPackaging' not in c and 'android {' in c:
+            c = c.replace('android {', 'android {\n    packaging { jniLibs { useLegacyPackaging = true } }', 1)
+            with open(path, 'w') as f:
+                f.write(c)
+        break
+" || true
+echo "android.enableR8.fullMode=true" >> android/gradle.properties || true
 
 flutter pub get
 echo
